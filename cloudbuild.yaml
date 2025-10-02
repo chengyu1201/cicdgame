@@ -2,23 +2,22 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _REGION: asia-east1            # 你的區域
-  _REPO: cicdgame                # Artifact Registry repo 名
-  _SERVICE: cicdgame             # 服務/映像名
+  _REGION: asia-east1
+  _REPO: cicdgame
+  _SERVICE: cicdgame
   _PLATFORM: managed
 
 steps:
-  # Step 1: build 從 backend/ 的 Dockerfile
+  # Step 1: build image
   - name: gcr.io/cloud-builders/docker
     args:
       [
         "build",
-        "-f", "backend/Dockerfile",                                             # 指定 Dockerfile 在 backend/
         "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}",
-        "backend"                                                               # build context 指向 backend/ 資料夾
+        "."
       ]
 
-  # Step 2: push 到 Artifact Registry
+  # Step 2: push image
   - name: gcr.io/cloud-builders/docker
     args:
       [
@@ -26,7 +25,7 @@ steps:
         "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}"
       ]
 
-  # Step 3（可選）: 從分支名抓學號，幫同一張 image 加 :<SID> 別名 tag
+  # Step 3 (可選): 從 branch 名抓 SID，加上 tag
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
     args:
@@ -39,8 +38,5 @@ steps:
             ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SID} \
             --location=${_REGION}
         else
-          echo "Branch $BRANCH_NAME has no valid SID; skip alias."
+          echo "Branch $BRANCH_NAME 沒有符合的學號，略過 tagging"
         fi
-
-images:
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}"
