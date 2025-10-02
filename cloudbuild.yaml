@@ -1,0 +1,34 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: europe-west1
+  _REPO: cloud-run-source-deploy
+  _SERVICE: cicdgame
+  _PLATFORM: managed
+
+# Create image for *this* repo. Trigger on branches: ^submission-.* (or PRs)
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build','-t','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}','.']
+
+  - name: gcr.io/cloud-builders/docker
+    args: ['push','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}']
+
+  # Optional: tag image with student id extracted from branch name
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        SID=$(echo "$BRANCH_NAME" | sed -E 's/^submission-([0-9]+)-.*/\1/')
+        if [[ "$SID" =~ ^[0-9]{8,10}$ ]]; then
+          gcloud artifacts tags add \
+            ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SID \
+            --location=${_REGION} \
+            --project=$PROJECT_ID \
+            --source-image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA} || true
+        fi
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}'

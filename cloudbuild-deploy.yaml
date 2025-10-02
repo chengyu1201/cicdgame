@@ -1,0 +1,17 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: europe-west1
+  _REPO: cloud-run-source-deploy
+  _SERVICE: cicdgame
+  _TAG: latest    # 手動觸發時可以覆寫為學號或 short sha
+
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args: [
+      'run','deploy','${_SERVICE}',
+      '--image','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}',
+      '--region','${_REGION}','--platform','managed','--allow-unauthenticated'
+    ]
