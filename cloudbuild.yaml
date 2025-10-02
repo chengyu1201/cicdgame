@@ -1,56 +1,46 @@
-options:                                # Cloud Build 執行選項
-  logging: CLOUD_LOGGING_ONLY           # 只把日誌丟到 Cloud Logging（不存 GCS 等）
+options:
+  logging: CLOUD_LOGGING_ONLY
 
-substitutions:                          # 自訂變數（預設值，可被 Trigger 覆寫；不需要放 SID）
-  _REGION: asia-east1                   # 你 Artifact Registry/Cloud Run 所在區域
-  _REPO: cicdgame                       # Artifact Registry 的 repository 名稱
-  _SERVICE: cicdgame                    # 之後 Cloud Run 服務名（也拿來當 image 名）
-  _PLATFORM: managed                    # Cloud Run 平台（managed=全代管）
+substitutions:
+  _REGION: asia-east1            # 你的區域
+  _REPO: cicdgame                # Artifact Registry repo 名
+  _SERVICE: cicdgame             # 服務/映像名
+  _PLATFORM: managed
 
-steps:                                  # 一個 build 由多個「步驟容器」依序執行
-  - name: gcr.io/cloud-builders/docker  # 第 1 步：使用官方 docker builder
-    args:                               # 執行 docker build 指令
-      [
-        'build',                        # docker 子命令：build
-        '-f','backend/Dockerfile',      # 指定 Dockerfile 路徑（在 backend/ 目錄）
-        '-t','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}',
-                                        # -t 指定 image tag：
-                                        #   <region>-docker.pkg.dev/<專案>/<repo>/<服務>:<短版sha>
-        'backend'                       # build context：把 backend/ 資料夾當作建置上下文
-      ]
-
-  - name: gcr.io/cloud-builders/docker  # 第 2 步：推送剛 build 好的 image
+steps:
+  # Step 1: build 從 backend/ 的 Dockerfile
+  - name: gcr.io/cloud-builders/docker
     args:
       [
-        'push',
-        '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}'
-                                        # 推到 Artifact Registry，同一個 tag
+        "build",
+        "-f", "backend/Dockerfile",                                             # 指定 Dockerfile 在 backend/
+        "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}",
+        "backend"                                                               # build context 指向 backend/ 資料夾
       ]
 
-  # （可選）第 3 步：從分支名解析出學號，替 image 加「學號別名 tag」
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk   # 用 gcloud CLI 的官方映像
-    entrypoint: bash                                 # 進入點改為 bash
+  # Step 2: push 到 Artifact Registry
+  - name: gcr.io/cloud-builders/docker
     args:
-      - -c                                           # bash -c 執行以下字串腳本
-        # 多行字串（這裡是一段 shell 腳本）
-        # 從 Cloud Build 內建變數 $BRANCH_NAME 取出 "submission-<數字>-..." 的 <數字> 部分
-        # 確認 SID 是 8~10 碼純數字（避免亂分支被當成學號）
-        # 幫同一個 image 再加一個別名 tag = 學號
-        # 之後你們手動部署時，就能用 :<SID> 指到該同學的 image
-        # 分支格式不符就跳過（不讓 build 失敗）
-      - |                                            
+      [
+        "push",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}"
+      ]
+
+  # Step 3（可選）: 從分支名抓學號，幫同一張 image 加 :<SID> 別名 tag
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
         SID=$(echo "$BRANCH_NAME" | sed -E 's/^submission-([0-9]+)-.*$/\1/')
-
         if [[ "$SID" =~ ^[0-9]{8,10}$ ]]; then
-
           gcloud artifacts docker tags add \
             ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA} \
             ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SID} \
             --location=${_REGION}
-
         else
-          echo "Branch $BRANCH_NAME does not contain a valid SID tag; skip alias."
+          echo "Branch $BRANCH_NAME has no valid SID; skip alias."
         fi
 
-images:                                 # 告訴 Cloud Build 這次產出的映像（用於記錄/快取）
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}"
