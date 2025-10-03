@@ -3,7 +3,7 @@ options:
 
 substitutions:
   _REGION: asia-east1            # Taiwan
-  _REPO: cloud-run-source-deploy # 你在 AR 的 docker repo 名稱
+  _REPO: cicdgame-ar # 你在 AR 的 docker repo 名稱
   _SERVICE: cicdgame-cr          # 你的 Cloud Run 服務名稱（手動 deploy 用）
   _PLATFORM: managed
 

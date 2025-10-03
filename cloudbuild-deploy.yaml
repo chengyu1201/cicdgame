@@ -3,7 +3,7 @@ options:
 
 substitutions:
   _REGION: asia-east1
-  _REPO: cloud-run-source-deploy
+  _REPO: cicdgame-ar
   _SERVICE: cicdgame-cr
   _PLATFORM: managed
   _TAG: latest
