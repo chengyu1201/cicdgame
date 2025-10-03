@@ -1,5 +1,5 @@
 {
-  "name": "cicdgame-backend",
+  "name": "cicdgame",
   "version": "1.0.0",
   "type": "module",
   "main": "server.js",

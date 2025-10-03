@@ -3,10 +3,10 @@ options:
 
 substitutions:
   _REGION: asia-east1
-  _REPO: cicdgame
-  _SERVICE: cicdgame
+  _REPO: cloud-run-source-deploy
+  _SERVICE: cicdgame-cr
   _PLATFORM: managed
-  _TAG: latest   # 執行 Trigger 時用表單改成 SID 或 SHORT_SHA
+  _TAG: latest
 
 steps:
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -14,10 +14,11 @@ steps:
     args:
       - -c
       - |
-        IMAGE="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}"
-        echo "Deploying $IMAGE to Cloud Run service ${_SERVICE} in ${_REGION}"
+        set -euo pipefail
+        IMAGE="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${SHORT_SHA}"
+        echo "Deploying image: ${IMAGE}"
         gcloud run deploy ${_SERVICE} \
-          --image="$IMAGE" \
+          --image="${IMAGE}" \
           --region="${_REGION}" \
           --platform="${_PLATFORM}" \
           --allow-unauthenticated
